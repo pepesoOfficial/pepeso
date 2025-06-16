@@ -1,0 +1,14 @@
+# Dependencies
+node_modules
+
+# Environments
+.env
+
+# Build
+dist
+
+# encrypted
+*.ekon
+
+# Configurations
+.vscode

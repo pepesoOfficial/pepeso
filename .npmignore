@@ -1,0 +1,17 @@
+# Dependencies
+node_modules
+
+# Environments
+.env
+
+# Source
+src
+
+# Deployments
+build
+Dockerfile
+docker-compose.yml
+*.log
+
+# encrypted
+*.ekon
