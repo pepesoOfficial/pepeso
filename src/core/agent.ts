@@ -7,12 +7,24 @@ export class Agent {
     private model: Model;
     private tools: BaseTool[];
     private history: Message[] = [];
+    private verbose: boolean;
 
-    constructor({ model, tools, systemPrompt, messages = [] }: { model: Model, tools: BaseTool[], systemPrompt: string, messages?: Message[] }) {
+    constructor({ model, tools, systemPrompt, messages = [], verbose = false }: { model: Model, tools: BaseTool[], systemPrompt: string, messages?: Message[], verbose?: boolean }) {
         this.model = model;
         this.tools = tools as BaseTool[];
         this.history.push({ id: uuid(), role: 'system', content: systemPrompt });
         this.history.push(...messages);
+        this.verbose = verbose;
+    }
+
+    private logToolUsage(toolName: string, input: any, output: any) {
+        if (!this.verbose) return;
+        
+        console.log('\n=== Tool Usage ===');
+        console.log(`Tool: ${toolName}`);
+        console.log('Input:', JSON.stringify(input, null, 2));
+        console.log('Output:', JSON.stringify(output, null, 2));
+        console.log('==================\n');
     }
 
     async chat(input: string): Promise<string> {
@@ -39,6 +51,7 @@ export class Agent {
                     throw new Error(`Tool ${toolCall.tool} not found`);
                 }
                 const result = await tool.run(toolCall.args);
+                this.logToolUsage(tool.name, toolCall.args, result);
                 const resultMessage: Message = {
                     id: uuid(),
                     role: 'result',

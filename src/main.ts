@@ -1,5 +1,5 @@
 import { v4 as uuid } from 'uuid';
-import { WeatherTool } from './tools';
+import { WeatherTool } from './tools/weather';
 import { Message } from './core/types';
 import { OpenAIModel } from './models/openai';
 import { Agent } from './core/agent';
@@ -17,7 +17,8 @@ async function main() {
         model: openaiModel, 
         tools, 
         systemPrompt, 
-        messages: initialMessages 
+        messages: initialMessages,
+        verbose: true
     });
     
     const response = await agent.chat('What is the weather like in New York?');
