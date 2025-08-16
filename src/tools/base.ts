@@ -1,6 +1,6 @@
 export interface ToolSchema {
     type: 'object';
-    properties: { [key: string]: { type: string; description?: string } };
+    properties: { [key: string]: { type: string; description?: string, tags?: string[] } };
     required?: string[];
     additionalProperties?: boolean;
     [key: string]: any; // Allow additional fields for flexibility
