@@ -1,6 +1,4 @@
 import { v4 as uuid } from 'uuid';
-// import { WeatherTool } from './tools/weather';
-// import { SearchTool } from './tools/search';
 import { WeatherTool, SearchTool } from './tools';
 import { Message } from './core/types';
 import { OpenAIModel } from './models/openai';

@@ -4,9 +4,33 @@
   "version": "1.0.1",
   "main": "dist/index.min.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.min.js"
+    },
+    "./tools": {
+      "types": "./dist/tools/index.d.ts",
+      "default": "./dist/tools/index.js"
+    },
+    "./models": {
+      "types": "./dist/models/index.d.ts",
+      "default": "./dist/models/index.js"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "tools": [
+        "dist/tools/index.d.ts"
+      ],
+      "models": [
+        "dist/models/index.d.ts"
+      ]
+    }
+  },
   "scripts": {
     "build": "tsc",
-    "minify": "terser dist/index.js --compress --mangle --output dist/index.min.js",
+    "minify": "terser dist/index.js --compress --mangle --output dist/index.min.js && terser dist/tools/index.js --compress --mangle --output dist/tools/index.js && terser dist/models/index.js --compress --mangle --output dist/models/index.js",
     "prepublishOnly": "npm run build && npm run minify"
   },
   "keywords": [
