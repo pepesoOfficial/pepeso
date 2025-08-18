@@ -1,8 +1,18 @@
+// tools direct export
+
+export { WeatherTool } from './weather'
+export { SearchTool } from './search'
+
+// registry based export
+
 import { toolRegistry, createTools } from './registry';
-import { weatherTool } from './weather';
+import { SearchTool } from './search';
+import { WeatherTool } from './weather';
+
 
 const allTools = createTools(
-    weatherTool
+    new WeatherTool(),
+    new SearchTool()
 );
 
 export { toolRegistry, createTools };
@@ -18,4 +28,3 @@ export function getToolsMetadata() {
 export function getToolsSchema() {
     return toolRegistry.getToolsSchema();
 }
-

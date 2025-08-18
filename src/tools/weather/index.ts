@@ -28,5 +28,3 @@ export class WeatherTool extends BaseTool {
     }
 }
 
-export const weatherTool = new WeatherTool();
-export default weatherTool;

@@ -1,160 +1,140 @@
-import winston from 'winston';
-import { format } from 'winston';
 import chalk from 'chalk';
-import { ChalkInstance } from 'chalk';
 
-// Define log levels and their colors
-const logLevels = {
+type LogLevel = 'error' | 'warn' | 'info' | 'debug' | 'tool' | 'agent';
+
+const LOG_LEVELS: Record<LogLevel, number> = {
   error: 0,
   warn: 1,
   info: 2,
-  http: 3,
-  verbose: 4,
-  debug: 5,
-  silly: 6,
-  tool: 7,
-  agent: 8,
+  debug: 3,
+  tool: 4,
+  agent: 5,
 };
 
-// Define log level keys as a type
-type LogLevelKey = keyof typeof logLevels;
+let currentLogLevel: LogLevel = 'info';
 
-// Define colors for each log level with proper typing
-const logColors: { [key in LogLevelKey]: ChalkInstance } = {
-  error: chalk.red.bold,
-  warn: chalk.yellow.bold,
-  info: chalk.blue,
-  http: chalk.magenta,
-  verbose: chalk.cyan,
-  debug: chalk.green,
-  silly: chalk.grey,
-  tool: chalk.cyan.bold,
-  agent: chalk.greenBright.bold,
-};
-
-// Custom formatter for pretty printing
-const customFormat = format.printf(({ level, message, timestamp, ...metadata }) => {
-  const levelOutput = logColors[level as LogLevelKey] ? logColors[level as LogLevelKey](level.toUpperCase().padEnd(7)) : level;
-  const timestampOutput = chalk.gray(`[${timestamp}]`);
-  
-  let metaOutput = '';
-  if (Object.keys(metadata).length > 0 && metadata.constructor === Object) {
-    metaOutput = chalk.gray(` ${JSON.stringify(metadata, null, 2)}`);
-  }
-  
-  return `${timestampOutput} ${levelOutput} ${message}${metaOutput}`;
-});
-
-// Create the logger
-const logger = winston.createLogger({
-  levels: logLevels,
-  level: process.env.LOG_LEVEL || 'info',
-  format: format.combine(
-    format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss.SSS' }),
-    format.errors({ stack: true }),
-    customFormat
-  ),
-  transports: [
-    new winston.transports.Console(),
-    new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
-    new winston.transports.File({ filename: 'logs/combined.log' }),
-  ],
-  exitOnError: false,
-});
-
-// Add winston to global types
-declare module 'winston' {
-  interface Logger {
-    tool(message: string, metadata?: any): this;
-    agent(message: string, metadata?: any): this;
-  }
+function getSimpleTimestamp() {
+  const d = new Date();
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 }
 
-// Tool execution logging
-export const logToolExecution = (toolName: string, input: any) => {
-  logger.tool(`🔧 Executing tool: ${toolName}`, { input });
+const log = (level: LogLevel, emoji: string, message: string, data?: any) => {
+  if (LOG_LEVELS[level] > LOG_LEVELS[currentLogLevel]) return;
+  
+  const timestamp = chalk.gray(`[${getSimpleTimestamp()}]`);
+  const levelStr = `${emoji} ${level.toUpperCase()}`.padEnd(10);
+  const formattedMessage = `${timestamp} ${levelStr} ${message}`;
+  
+  console.log(formattedMessage);
+  if (data) {
+    console.log(chalk.gray(JSON.stringify(data, null, 2)), '\n\n');
+  }
 };
 
-export const logToolResult = (toolName: string, result: any) => {
-  logger.tool(`✅ Tool result: ${toolName}`, { result });
+export const setLogLevel = (level: LogLevel) => {
+  currentLogLevel = level;
 };
 
-// Agent action logging
-export const logAgentThinking = (agentId: string, thought: string) => {
-  logger.agent(`🤔 Agent thinking: ${agentId}`, { thought });
+// Public logging methods
+export const error = (message: string, data?: any) => 
+  log('error', '❌', chalk.red(message), data);
+
+export const warn = (message: string, data?: any) => 
+  log('warn', '⚠️', chalk.yellow(message), data);
+
+export const info = (message: string, data?: any) => 
+  log('info', 'ℹ️', chalk.blue(message), data);
+
+export const debug = (message: string, data?: any) => 
+  log('debug', '�', chalk.green(message), data);
+
+export const toolLogger = (action: 'start' | 'end' | 'error', toolName: string, data?: any) => {
+  const emojiMap = {
+    start: '🚀',
+    end: '✅',
+    error: '❌'
+
+  };
+  const message = `${toolName} ${action === 'start' ? 'Started' : action === 'end' ? 'Completed' : 'Failed'}`;
+  log('tool', emojiMap[action], chalk.cyan(message), data);
 };
 
-export const logAgentAction = (agentId: string, action: string, details?: any) => {
-  logger.agent(`🚀 Agent action: ${agentId}`, { action, ...details });
+export const agent = (action: 'think' | 'act' | 'observe', message: string, data?: any) => {
+  const emojiMap = {
+    think: '🤔',
+    act: '🚀',
+    observe: '👁️'
+  };
+  log('agent', emojiMap[action], chalk.magenta(`[Agent] ${message}`), data);
 };
 
-export const logAgentObservation = (agentId: string, observation: string) => {
-  logger.agent(`👁️ Agent observation: ${agentId}`, { observation });
-};
-
-// Create a step tracking system
+// Step tracker
 export class StepTracker {
   private steps: Array<{
     step: number;
     timestamp: Date;
-    type: string;
-    description: string;
-    details?: any;
+    type: 'start' | 'info' | 'success' | 'warning' | 'error' | 'complete';
+    message: string;
+    data?: any;
   }> = [];
-
+  
   private currentStep = 0;
+  private startTime: Date;
 
-  constructor(private name: string) {}
+  constructor(private name: string) {
+    this.startTime = new Date();
+    this.addStep('start', `Starting ${name}`);
+  }
 
-  addStep(type: string, description: string, details?: any) {
+  addStep(type: 'start' | 'info' | 'success' | 'warning' | 'error' | 'complete', message: string, data?: any) {
     this.currentStep++;
     const step = {
       step: this.currentStep,
       timestamp: new Date(),
       type,
-      description,
-      details,
+      message,
+      data
     };
     this.steps.push(step);
     
-    const emoji = this.getEmojiForType(type);
-    logger.info(`${emoji} [Step ${this.currentStep}] ${this.name}: ${description}`);
-    return this.currentStep;
-  }
-
-  getSteps() {
-    return this.steps;
-  }
-
-  private getEmojiForType(type: string): string {
-    switch (type.toLowerCase()) {
-      case 'tool':
-        return '🔧';
-      case 'thinking':
-        return '🤔';
-      case 'decision':
-        return '🧠';
-      case 'action':
-        return '🚀';
-      case 'result':
-        return '✅';
-      case 'error':
-        return '❌';
-      default:
-        return '➡️';
-    }
-  }
-
-  summarize(): string {
-    const summary = this.steps.map((step) => {
-      const emoji = this.getEmojiForType(step.type);
-      return `${emoji} Step ${step.step}: ${step.description}`;
-    }).join('\n');
+    const emojiMap = {
+      start: '🚀',
+      info: 'ℹ️',
+      success: '✅',
+      warning: '⚠️',
+      error: '❌',
+      complete: '🏁'
+    };
     
-    logger.info(`📋 Execution summary for ${this.name}:\n${summary}`);
-    return summary;
+    const colorMap = {
+      start: chalk.blue,
+      info: chalk.cyan,
+      success: chalk.green,
+      warning: chalk.yellow,
+      error: chalk.red,
+      complete: chalk.greenBright
+    };
+    
+    const timestamp = chalk.gray(`[${step.timestamp.toISOString()}]`);
+    const stepInfo = chalk.gray(`[Step ${step.step}]`);
+    const formattedMessage = colorMap[type](`${emojiMap[type]} ${message}`);
+    
+    console.log(`${timestamp} ${stepInfo} ${formattedMessage}`);
+    if (data) {
+      console.log(chalk.gray(JSON.stringify(data, null, 2)));
+    }
+    
+    return step;
+  }
+  
+  complete(message = 'Completed successfully') {
+    const endTime = new Date();
+    const duration = endTime.getTime() - this.startTime.getTime();
+    this.addStep('complete', `${message} (took ${duration}ms)`);
+  }
+  
+  error(message: string, error?: Error) {
+    this.addStep('error', message, error ? error.message : undefined);
   }
 }
-
-// Export the logger to be used throughout the application
-export default logger;

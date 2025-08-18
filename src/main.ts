@@ -1,12 +1,14 @@
 import { v4 as uuid } from 'uuid';
-import { WeatherTool } from './tools/weather';
+// import { WeatherTool } from './tools/weather';
+// import { SearchTool } from './tools/search';
+import { WeatherTool, SearchTool } from './tools';
 import { Message } from './core/types';
 import { OpenAIModel } from './models/openai';
 import { Agent } from './core/agent';
 
 async function main() {
     const openaiModel = new OpenAIModel();
-    const tools = [new WeatherTool()];
+    const tools = [new WeatherTool(), new SearchTool()];
     const systemPrompt = 'You are a helpful assistant.';
     const initialMessages: Message[] = [
         { id: uuid(), role: 'user', content: 'Hello!' },
